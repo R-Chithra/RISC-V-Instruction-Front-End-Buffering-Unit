@@ -1,0 +1,153 @@
+OUTPUT ANALYSIS – RISC-V INSTRUCTION FRONT-END BUFFERING UNIT (LEVEL-2)
+
+This file explains the cycle-by-cycle simulation output obtained from the
+Level-2 Instruction Front-End Buffering Unit implementation.
+
+The output table shown in output_table.jpeg is generated from the testbench during simulation.
+Each row corresponds to one clock cycle, and all signals are sampled after the
+clock positive edge, once the internal state has been updated.
+
+The graphical waveform corresponding to this output is captured separately
+using GTKWave and is available as:
+    gtkwave.jpeg
+
+----------------------------------------------------------------------
+TABLE DESCRIPTION
+----------------------------------------------------------------------
+
+The output table consists of the following columns:
+
+time   : Simulation time in picoseconds.
+in     : Indicates whether a valid instruction is coming from the decode stage.
+long   : Indicates whether the instruction is a long (multi-cycle) instruction.
+busy   : Indicates whether the execution stage is currently busy.
+free   : Indicates whether the execution stage will free in the next cycle.
+push   : Indicates that an instruction is pushed into the buffer.
+pop    : Indicates that an instruction is popped from the buffer to execution.
+bypass : Indicates that an instruction bypasses the buffer directly to execution.
+count  : Number of instructions currently stored in the buffer.
+
+----------------------------------------------------------------------
+INITIAL STATE
+----------------------------------------------------------------------
+
+At the beginning of simulation, no instructions are present.
+The buffer count is zero, and the execution stage is idle.
+This confirms correct reset behavior of the buffering unit.
+
+----------------------------------------------------------------------
+BYPASS OPERATION
+----------------------------------------------------------------------
+
+When a short instruction arrives (in = 1, long = 0), the buffer is empty
+(count = 0), and execution is free (busy = 0), the instruction bypasses
+the buffer directly.
+
+This is indicated by:
+    bypass = 1
+    push = 0
+    pop = 0
+    count remains 0
+
+This behavior proves that the bypass optimization is working correctly
+and avoids unnecessary buffering.
+
+----------------------------------------------------------------------
+PUSH OPERATION (BUFFERING)
+----------------------------------------------------------------------
+
+When execution becomes busy and a valid instruction arrives, bypass is
+not allowed. In this case, the instruction is pushed into the buffer.
+
+This is indicated by:
+    push = 1
+    bypass = 0
+
+The buffer count increases by one in the next clock cycle, showing that
+buffer updates are synchronous and occur only at clock edges.
+
+----------------------------------------------------------------------
+LOOK-AHEAD POP OPERATION
+----------------------------------------------------------------------
+
+When execution is busy but will free in the next cycle (free = 1), the
+buffer uses look-ahead logic to pop an instruction early.
+
+This prevents idle cycles in execution and improves throughput.
+The table shows pop = 1 under these conditions, followed by a decrement
+in buffer count.
+
+----------------------------------------------------------------------
+LONG INSTRUCTION HANDLING
+----------------------------------------------------------------------
+
+Long instructions are never allowed to bypass the buffer.
+Whenever a long instruction arrives, it is always pushed into the buffer,
+regardless of execution availability.
+
+This confirms correct handling of multi-cycle instructions.
+
+----------------------------------------------------------------------
+SIMULTANEOUS PUSH AND POP
+----------------------------------------------------------------------
+
+In some cycles, a new instruction is pushed while an older instruction is
+popped in the same cycle.
+
+In these cases:
+    push = 1
+    pop = 1
+
+The buffer count remains unchanged, which verifies correct handling of
+simultaneous enqueue and dequeue operations.
+
+----------------------------------------------------------------------
+BUFFER FULL AND STALL CONDITION
+----------------------------------------------------------------------
+
+As multiple long instructions arrive while execution is busy, the buffer
+fills up to its maximum depth.
+
+When count reaches the buffer depth:
+    push is blocked
+    decode is stalled
+
+This confirms correct backpressure behavior and prevents buffer overflow.
+
+----------------------------------------------------------------------
+BUFFER DRAINING
+----------------------------------------------------------------------
+
+When execution becomes free and no new instructions arrive, the buffer
+drains one instruction per cycle.
+
+This is observed as repeated pop operations and a gradual reduction of
+count until it reaches zero.
+
+----------------------------------------------------------------------
+FINAL STATE
+----------------------------------------------------------------------
+
+At the end of simulation:
+    count = 0
+    no push or pop activity
+    execution idle
+
+The simulation terminates with the message:
+    SIM PASSED — LEVEL-2 VERIFIED
+
+This confirms that the Level-2 Instruction Front-End Buffering Unit
+operates correctly across all tested scenarios.
+
+----------------------------------------------------------------------
+WAVEFORM REFERENCE
+----------------------------------------------------------------------
+
+The timing behavior of push, pop, bypass, and count signals can be visually
+verified using the GTKWave waveform.
+
+The waveform screenshot corresponding to this simulation is available as:
+    gtkwave.jpeg
+
+The waveform confirms the same behavior observed in the output table and
+serves as a visual proof of correctness.
